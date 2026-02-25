@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: audit-access-config
+  namespace: audit-system
+data:
+  access.yaml: |
+    allowedUsers:
+      - system:admin
+      - kube:admin
+    allowedGroups:
+      - cluster-admins

@@ -1,0 +1,80 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-frontend
+  namespace: audit-system
+spec:
+  selector:
+    app: audit-frontend
+  ports:
+    - name: proxy
+      port: 4180
+      targetPort: 4180
+---
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: audit-frontend
+  namespace: audit-system
+spec:
+  to:
+    kind: Service
+    name: audit-frontend
+  port:
+    targetPort: proxy
+  tls:
+    termination: edge
+    insecureEdgeTerminationPolicy: Redirect
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-frontend
+  namespace: audit-system
+  labels:
+    app: audit-frontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: audit-frontend
+  template:
+    metadata:
+      labels:
+        app: audit-frontend
+    spec:
+      serviceAccountName: audit-frontend
+      containers:
+        - name: frontend
+          image: IMAGE_REGISTRY_PLACEHOLDER/audit-frontend:latest
+          ports:
+            - containerPort: 8443
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+
+        - name: oauth-proxy
+          image: registry.redhat.io/openshift4/ose-oauth-proxy:latest
+          ports:
+            - containerPort: 4180
+              name: proxy
+          args:
+            - --http-address=:4180
+            - --https-address=
+            - --provider=openshift
+            - --openshift-service-account=audit-frontend
+            - --upstream=http://localhost:8443
+            - --cookie-secret=+f/GiW5w4oUJTzPM8ibWdoKJhqYCjt6XSmcILf8FYPc=
+            - --cookie-secure=true
+            - --pass-user-headers=true
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 100m
+              memory: 128Mi

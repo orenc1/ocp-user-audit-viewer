@@ -1,0 +1,59 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: audit-collector
+  namespace: audit-system
+  labels:
+    app: audit-collector
+spec:
+  selector:
+    matchLabels:
+      app: audit-collector
+  template:
+    metadata:
+      labels:
+        app: audit-collector
+    spec:
+      serviceAccountName: audit-collector
+      nodeSelector:
+        node-role.kubernetes.io/master: ""
+      tolerations:
+        - key: node-role.kubernetes.io/master
+          operator: Exists
+          effect: NoSchedule
+        - key: node-role.kubernetes.io/control-plane
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - name: collector
+          image: IMAGE_REGISTRY_PLACEHOLDER/audit-collector:latest
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          env:
+            - name: AUDIT_LOG_DIR
+              value: /var/log/kube-apiserver
+            - name: OFFSET_FILE
+              value: /tmp/audit-offset
+            - name: BACKEND_URL
+              value: http://audit-backend.audit-system.svc.cluster.local:8080
+          volumeMounts:
+            - name: audit-logs
+              mountPath: /var/log/kube-apiserver
+              readOnly: true
+            - name: offset
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+      volumes:
+        - name: audit-logs
+          hostPath:
+            path: /var/log/kube-apiserver
+            type: DirectoryOrCreate
+        - name: offset
+          emptyDir: {}

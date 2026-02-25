@@ -1,0 +1,74 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: audit-backend
+  namespace: audit-system
+spec:
+  selector:
+    app: audit-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: audit-backend
+  namespace: audit-system
+  labels:
+    app: audit-backend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: audit-backend
+  template:
+    metadata:
+      labels:
+        app: audit-backend
+    spec:
+      serviceAccountName: audit-backend
+      containers:
+        - name: backend
+          image: IMAGE_REGISTRY_PLACEHOLDER/audit-backend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-credentials
+                  key: DATABASE_URL
+            - name: PORT
+              value: "8080"
+            - name: GIN_MODE
+              value: release
+            - name: ACCESS_CONFIG_PATH
+              value: /etc/audit-access/access.yaml
+          volumeMounts:
+            - name: access-config
+              mountPath: /etc/audit-access
+              readOnly: true
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 30
+      volumes:
+        - name: access-config
+          configMap:
+            name: audit-access-config
