@@ -42,11 +42,12 @@ export default function FilterBar({ query, onChange, onSearch, loading }: Filter
     <div style={{ marginBottom: 16 }}>
       <Row gutter={[12, 12]}>
         <Col xs={24} sm={12} md={6}>
-          <Input
+          <Select
+            mode="tags"
             placeholder="Username"
-            value={query.username || ""}
-            onChange={(e) => update({ username: e.target.value })}
-            onPressEnter={onSearch}
+            style={{ width: "100%" }}
+            value={query.username ? query.username.split(",") : []}
+            onChange={(vals: string[]) => update({ username: vals.join(",") })}
             allowClear
           />
         </Col>
@@ -62,29 +63,32 @@ export default function FilterBar({ query, onChange, onSearch, loading }: Filter
           />
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Input
+          <Select
+            mode="tags"
             placeholder="Resource (e.g. pods)"
-            value={query.resource || ""}
-            onChange={(e) => update({ resource: e.target.value })}
-            onPressEnter={onSearch}
+            style={{ width: "100%" }}
+            value={query.resource ? query.resource.split(",") : []}
+            onChange={(vals: string[]) => update({ resource: vals.join(",") })}
             allowClear
           />
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Input
+          <Select
+            mode="tags"
             placeholder="Namespace"
-            value={query.namespace || ""}
-            onChange={(e) => update({ namespace: e.target.value })}
-            onPressEnter={onSearch}
+            style={{ width: "100%" }}
+            value={query.namespace ? query.namespace.split(",") : []}
+            onChange={(vals: string[]) => update({ namespace: vals.join(",") })}
             allowClear
           />
         </Col>
         <Col xs={24} sm={12} md={6}>
-          <Input
+          <Select
+            mode="tags"
             placeholder="Resource name"
-            value={query.name || ""}
-            onChange={(e) => update({ name: e.target.value })}
-            onPressEnter={onSearch}
+            style={{ width: "100%" }}
+            value={query.name ? query.name.split(",") : []}
+            onChange={(vals: string[]) => update({ name: vals.join(",") })}
             allowClear
           />
         </Col>

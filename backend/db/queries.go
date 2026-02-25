@@ -219,9 +219,14 @@ func buildWhereClause(q models.EventQuery) (string, []any) {
 	argIdx := 1
 
 	if q.Username != "" {
-		conditions = append(conditions, fmt.Sprintf("username ILIKE $%d", argIdx))
-		args = append(args, "%"+q.Username+"%")
-		argIdx++
+		usernames := strings.Split(q.Username, ",")
+		userConds := make([]string, len(usernames))
+		for i, u := range usernames {
+			userConds[i] = fmt.Sprintf("username ILIKE $%d", argIdx)
+			args = append(args, "%"+strings.TrimSpace(u)+"%")
+			argIdx++
+		}
+		conditions = append(conditions, "("+strings.Join(userConds, " OR ")+")")
 	}
 	if q.Verb != "" {
 		verbs := strings.Split(q.Verb, ",")
@@ -234,19 +239,34 @@ func buildWhereClause(q models.EventQuery) (string, []any) {
 		conditions = append(conditions, fmt.Sprintf("verb IN (%s)", strings.Join(placeholders, ",")))
 	}
 	if q.Resource != "" {
-		conditions = append(conditions, fmt.Sprintf("resource = $%d", argIdx))
-		args = append(args, q.Resource)
-		argIdx++
+		resources := strings.Split(q.Resource, ",")
+		placeholders := make([]string, len(resources))
+		for i, r := range resources {
+			placeholders[i] = fmt.Sprintf("$%d", argIdx)
+			args = append(args, strings.TrimSpace(r))
+			argIdx++
+		}
+		conditions = append(conditions, fmt.Sprintf("resource IN (%s)", strings.Join(placeholders, ",")))
 	}
 	if q.Namespace != "" {
-		conditions = append(conditions, fmt.Sprintf("namespace = $%d", argIdx))
-		args = append(args, q.Namespace)
-		argIdx++
+		namespaces := strings.Split(q.Namespace, ",")
+		placeholders := make([]string, len(namespaces))
+		for i, n := range namespaces {
+			placeholders[i] = fmt.Sprintf("$%d", argIdx)
+			args = append(args, strings.TrimSpace(n))
+			argIdx++
+		}
+		conditions = append(conditions, fmt.Sprintf("namespace IN (%s)", strings.Join(placeholders, ",")))
 	}
 	if q.Name != "" {
-		conditions = append(conditions, fmt.Sprintf("name ILIKE $%d", argIdx))
-		args = append(args, "%"+q.Name+"%")
-		argIdx++
+		names := strings.Split(q.Name, ",")
+		nameConds := make([]string, len(names))
+		for i, n := range names {
+			nameConds[i] = fmt.Sprintf("name ILIKE $%d", argIdx)
+			args = append(args, "%"+strings.TrimSpace(n)+"%")
+			argIdx++
+		}
+		conditions = append(conditions, "("+strings.Join(nameConds, " OR ")+")")
 	}
 	if q.From != "" {
 		t, err := time.Parse(time.RFC3339, q.From)
