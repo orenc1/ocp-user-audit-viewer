@@ -74,7 +74,13 @@ func (d *DB) QueryEvents(ctx context.Context, q models.EventQuery) (*models.Even
 
 	where, args := buildWhereClause(q)
 
-	countQuery := "SELECT COUNT(*) FROM audit_events" + where
+	// Use a capped count to avoid scanning millions of rows for pagination.
+	// Counts up to maxCount+1; if the result equals maxCount+1 we know there
+	// are "at least maxCount" rows without scanning the entire dataset.
+	const maxCount = 10000
+	countQuery := fmt.Sprintf(
+		"SELECT COUNT(*) FROM (SELECT 1 FROM audit_events%s LIMIT %d) _c",
+		where, maxCount+1)
 	var total int64
 	err := d.Pool.QueryRow(ctx, countQuery, args...).Scan(&total)
 	if err != nil {
@@ -160,7 +166,9 @@ func (d *DB) GetEvent(ctx context.Context, id string) (*models.AuditEvent, error
 func (d *DB) GetStats(ctx context.Context) (*models.StatsResponse, error) {
 	stats := &models.StatsResponse{}
 
-	err := d.Pool.QueryRow(ctx, "SELECT COUNT(*) FROM audit_events").Scan(&stats.TotalEvents)
+	err := d.Pool.QueryRow(ctx,
+		`SELECT COALESCE(SUM(reltuples::bigint), 0)
+		 FROM pg_class WHERE relname LIKE 'audit_events_2%'`).Scan(&stats.TotalEvents)
 	if err != nil {
 		return nil, err
 	}

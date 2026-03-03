@@ -55,8 +55,8 @@ func (d *DB) migrate(ctx context.Context) error {
 	}
 
 	if exists {
-		log.Println("Database schema already exists, skipping migration")
-		return nil
+		log.Println("Database schema already exists, running incremental migrations")
+		return d.migrateIncremental(ctx)
 	}
 
 	schema := `
@@ -98,6 +98,27 @@ func (d *DB) migrate(ctx context.Context) error {
 		return fmt.Errorf("exec schema: %w", err)
 	}
 	log.Println("Database schema created")
+
+	return d.migrateIncremental(ctx)
+}
+
+// migrateIncremental applies additive migrations that are safe to re-run.
+func (d *DB) migrateIncremental(ctx context.Context) error {
+	_, err := d.Pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pg_trgm`)
+	if err != nil {
+		log.Printf("pg_trgm extension not available (non-fatal): %v", err)
+	} else {
+		trgmIndexes := []string{
+			`CREATE INDEX IF NOT EXISTS idx_audit_username_trgm ON audit_events USING gin (username gin_trgm_ops)`,
+			`CREATE INDEX IF NOT EXISTS idx_audit_name_trgm ON audit_events USING gin (name gin_trgm_ops)`,
+		}
+		for _, ddl := range trgmIndexes {
+			if _, err := d.Pool.Exec(ctx, ddl); err != nil {
+				log.Printf("GIN index creation (non-fatal): %v", err)
+			}
+		}
+		log.Println("pg_trgm GIN indexes ensured")
+	}
 	return nil
 }
 
